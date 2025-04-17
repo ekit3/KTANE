@@ -8,6 +8,7 @@
 #define CLK 2
 #define DIO 3
 #define PIXEL_PIN 13
+#define PIEZO_PIN 17
 
 #define DEFAULT_TIMER 300.0 // 5 min in seconds
 
@@ -16,9 +17,6 @@
 #define WIN_BUTTON_PIN 7
 #define RESET_BUTTON_PIN 8
 
-
-SoftwareSerial mp3Serial(12, 11); // RX, TX
-DFRobotDFPlayerMini mp3;
 int lastDisplayedSeconds = -1;
 
 
@@ -40,15 +38,11 @@ bool gameStarted = false;
 void setup() {
   Serial.begin(9600);
 
-  mp3Serial.begin(9600);
-  mp3.begin(mp3Serial);
-  mp3.reset();
-  mp3.volume(40);
-
   pinMode(START_BUTTON_PIN, INPUT_PULLUP);
   pinMode(STRIKE_BUTTON_PIN, INPUT_PULLUP);
   pinMode(WIN_BUTTON_PIN, INPUT_PULLUP);
   pinMode(RESET_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(PIEZO_PIN, OUTPUT);
 
   display.setBrightness(7);
   
@@ -160,28 +154,32 @@ void loop() {
         display.showNumberDecEx(sec * 100 + hundredths, 0b01000000, false, 4, 0);
       }
     
-
-      /* FIXME : not playing & timer is stuck at 10sec left
       if (displayedSec != lastDisplayedSeconds) {
         lastDisplayedSeconds = displayedSec;
 
         // Every full minute
         if (displayedSec % 60 == 0 && displayedSec != 0) {
-          mp3.play(1); // long_bip.mp3
+          bip();
         }
 
         // At 30, 20, and 15 seconds left
         if (displayedSec == 30 || displayedSec == 20 || displayedSec == 15) {
-          mp3.play(1); // long_bip.mp3
+          bip();
         }
 
         // From 10 to 1 seconds
         if (displayedSec <= 10 && displayedSec >= 1) {
-          mp3.play(2); // short_bip.mp3
+          bip();
         }
-      }*/
+      }
     }
   }
+}
+
+void bip(){
+  digitalWrite(PIEZO_PIN, HIGH);  
+  delay(100);
+  digitalWrite(PIEZO_PIN, LOW);
 }
 
 void handleButtons(){
