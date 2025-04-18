@@ -4,6 +4,16 @@
 #include <SoftwareSerial.h>
 #include <DFRobotDFPlayerMini.h>
 
+#define MODULE_ID "TIMER"
+#define RX 9
+#define TX 10
+
+#define RESET "RESET"
+#define START "START"
+#define STRIKE "STRIKE"
+#define WIN "WIN"
+#define LOST "LOST"
+#define TIME "TIME"
 
 #define CLK 2
 #define DIO 3
@@ -18,7 +28,6 @@
 #define RESET_BUTTON_PIN 8
 
 int lastDisplayedSeconds = -1;
-
 
 const int numPixels = 4; // each strike had 2 LED
 Adafruit_NeoPixel strip = Adafruit_NeoPixel(numPixels, PIXEL_PIN, NEO_GRB + NEO_KHZ800);
@@ -35,8 +44,11 @@ bool gameOver = false;
 bool gameWon = false;
 bool gameStarted = false;
 
+SoftwareSerial serialHub(RX,TX);
+
 void setup() {
   Serial.begin(9600);
+  serialHub.begin(9600);
 
   pinMode(START_BUTTON_PIN, INPUT_PULLUP);
   pinMode(STRIKE_BUTTON_PIN, INPUT_PULLUP);
@@ -61,6 +73,7 @@ void loop() {
   if (!gameOver && !gameWon && (timeLeft <= 0.0 || strikes >= 3)) {
     gameOver = true;
     timeLeft = 0.0;
+    sendToSerialHub(LOST,-1);
   }
 
   if (gameOver) {
@@ -135,6 +148,7 @@ void loop() {
     float elapsed = (now - lastUpdate) / 1000.0 * speedMultiplier;
 
     if (elapsed >= 0.01) {
+      sendToSerialHub(TIME, elapsed);
       int displayedSec = 0;
       
       timeLeft -= elapsed;
@@ -183,22 +197,14 @@ void bip(){
 }
 
 void handleButtons(){
-  //debug method to trigger methods 
-
   if (digitalRead(START_BUTTON_PIN) == LOW) {
     gameStart();
-  }
-
-  if (digitalRead(STRIKE_BUTTON_PIN) == LOW) {
-      addStrike();
-  }
-
-  if (digitalRead(WIN_BUTTON_PIN) == LOW) {
-    winGame();
+    delay(200);
   }
 
   if (digitalRead(RESET_BUTTON_PIN) == LOW) {
     resetGame();
+    delay(200);
   }
 }
 
@@ -206,12 +212,14 @@ void gameStart() {
   if (!gameStarted && !gameOver && !gameWon) {
     gameStarted = true;
     lastUpdate = millis();
+    sendToSerialHub(START,-1);
   }
 }
 
 void addStrike() {
   if (!gameOver && !gameWon && strikes < 3) {
     strikes++;
+    sendToSerialHub(STRIKE,strikes);
   }
 }
 
@@ -220,6 +228,7 @@ void winGame() {
     gameWon = true;
     gameStarted = false;  // stop timer
     timeLeft = max(0.0, timeLeft);
+    sendToSerialHub(WIN,1);
   }
 }
 
@@ -236,8 +245,17 @@ void resetGame() {
   strip.clear();
   strip.show();
   display.clear();
+
   int minutes = (int) timeLeft / 60;
   int seconds = (int) timeLeft % 60;
   display.showNumberDecEx(minutes * 100 + seconds, 0b01000000, true, 4, 0);
+
+  sendToSerialHub(RESET,-1);
+}
+
+void sendToSerialHub(String code,int msg) {
+  String message = String(MODULE_ID)+";"+String(code)+":"+String(msg);
+  serialHub.println(message);
+  Serial.println("Sent to SerialHub: " + message);
 }
 
