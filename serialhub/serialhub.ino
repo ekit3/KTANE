@@ -1,5 +1,8 @@
 #include <SoftwareSerial.h>
 #include <Adafruit_NeoPixel.h>
+#include <stdlib.h> // Pour la génération de nombres aléatoires
+
+
 
 #define RX_PIN 0
 #define TX_PIN 1
@@ -15,6 +18,33 @@ SoftwareSerial port5(10, 11);
 #define NUM_PIXELS 5
 Adafruit_NeoPixel strip(NUM_PIXELS, PIN_NEOPIXEL, NEO_GRB + NEO_KHZ800);
 
+#define TEST_INTERVAL 2000 // Intervalle entre l'envoi des paquets en millisecondes
+unsigned long lastTestTime = 0;
+
+void sendRandomPacket(SoftwareSerial &srcPort, SoftwareSerial &destPort, int sourcePortNumber, int destinationPortNumber) {
+  String randomData = "RandomPacket:" + String(random(1000, 9999)); // Crée une donnée aléatoire
+  Serial.print("Envoi d'un paquet de Port ");
+  Serial.print(sourcePortNumber);
+  Serial.print(" vers Port ");
+  Serial.print(destinationPortNumber);
+  Serial.print(": ");
+  Serial.println(randomData);
+
+  // Envoie le message formaté à la destination
+  String message = String(sourcePortNumber) + "," + String(destinationPortNumber) + ":" + randomData;
+  destPort.println(message);
+  srcPort.println(randomData); 
+}
+
+void testHub() {
+  unsigned long currentTime = millis();
+  if (currentTime - lastTestTime > TEST_INTERVAL) {
+    lastTestTime = currentTime;
+
+    // Test : Paquet aléatoire Port1 vers Port2
+    sendRandomPacket(port1, port2, 1, 2);
+  }
+}
 
 String incomingMessage = "";
 
@@ -59,6 +89,10 @@ void loop() {
       incomingMessage += receivedChar;
     }
   }
+
+  // Lancement du test
+  testHub();
+
 
 }
 
